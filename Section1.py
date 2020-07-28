@@ -1,6 +1,7 @@
 import csv
+from nameparser import HumanName
 
-with open('dataeng_test/dataset_short.csv', mode="r") as csv_file:
+with open('dataeng_test/dataset.csv', mode="r") as csv_file:
     csv_reader = csv.reader(csv_file)
     all_lines = []
     single_line = []
@@ -11,6 +12,11 @@ with open('dataeng_test/dataset_short.csv', mode="r") as csv_file:
             pass
 
         else:
+            # Remove any other than first and last names
+            name = HumanName(row[0])
+            name.string_format = "{first} {last}"
+            row[0] = str(name)
+            
             # Remove prepended 0s
             row[1] = row[1].strip("0")
             
@@ -23,13 +29,11 @@ with open('dataeng_test/dataset_short.csv', mode="r") as csv_file:
             # Split the names to first and last names
             split_row = ' '.join(row).split()
 
-            if len(split_row) == 4:
-                # Remove Mr. and Ms.
-                split_row.pop(0)
-
             all_lines.append(split_row)
 
     # Create new columns for new csv
     all_lines[0] = ["first_name", "last_name", "price", "above_100"]    
-    
-    print(all_lines)
+
+with open("parsed_dataset.csv", "w", newline="") as file:
+     writer = csv.writer(file)
+     writer.writerows(all_lines)
