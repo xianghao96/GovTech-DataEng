@@ -4,6 +4,7 @@ from nameparser import HumanName
 from airflow import DAG
 from airflow.operators.python_operator import PythonOperator
 from airflow.operators.bash_operator import BashOperator
+from airflow.utils.dates import days_ago
 
 from datetime import datetime
 from datetime import timedelta
@@ -11,7 +12,7 @@ from datetime import timedelta
 default_args = {
     'owner': 'airflow',
     'depends_on_past': False,
-    'start_date': datetime(2020, 7, 28),
+    'start_date': days_ago(2),
     'email_on_failure': False,
     'email_on_retry': False,
     'schedule_interval': '@daily',
@@ -19,8 +20,8 @@ default_args = {
     'retry_delay': timedelta(seconds=5),
 }
 
-def parse_file():
-    with open('dataeng_test/dataset.csv', mode="r") as csv_file:
+def parse_file(filepath):
+    with open('filepath', mode="r") as csv_file:
         csv_reader = csv.reader(csv_file)
         all_lines = []
         single_line = []
@@ -55,31 +56,23 @@ def parse_file():
     # Create new columns for new csv
     all_lines[0] = ["first_name", "last_name", "price", "above_100"]    
 
-    with open("parsed_dataset.csv", "w", newline="") as file:
+    with open("dataeng_test/parsed_dataset.csv", "w", newline="") as file:
         writer = csv.writer(file)
         writer.writerows(all_lines)
 
 
-def get_hdfs_config():
-    #return HDFS configuration parameters required to store data into HDFS.
-    return None
-
-config = get_hdfs_config()
-
 dag = DAG(
   dag_id='my_dag', 
   description='Section 1 DAG',
-  default_args=default_args)
+  default_args=default_args,
+  schedule_interval=timedelta(days=1)) # Since we want this to run daily
 
-src1_s3 = PythonOperator(
-  task_id='Python Script', 
+t1 = PythonOperator(
+  task_id='Python_Script', 
+  depends_on_past=False,
   python_callable=parse_file, 
+  op_kwargs={'filepath': 'dataeng_test/dataset.csv'},
   dag=dag)
 
-spark_job = BashOperator(
-  task_id='spark_task_etl',
-  bash_command='spark-submit --master spark://localhost:5000 spark_job.py',
-  dag = dag)
-
 # setting dependencies
-parse_file >> spark_job
+t1
